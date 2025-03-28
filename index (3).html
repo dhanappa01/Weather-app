@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #e6f7ff;
+            transition: background 0.5s ease-in-out;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            transition: transform 0.3s ease;
+        }
+        .container:hover {
+            transform: scale(1.05);
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #4C6A92;
+        }
+        input, button {
+            padding: 10px;
+            margin-top: 10px;
+            width: 80%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        button {
+            background-color: #4C6A92;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #3a5578;
+        }
+        #weather-info {
+            margin-top: 15px;
+        }
+        .icon {
+            font-size: 3rem;
+        }
+        .fav-btn {
+            margin-top: 10px;
+            background: #ffcc00;
+            color: black;
+            width: auto;
+            padding: 5px 15px;
+            cursor: pointer;
+        }
+        .favorite-cities {
+            margin-top: 15px;
+        }
+        .fav-city {
+            cursor: pointer;
+            padding: 5px;
+            margin: 5px;
+            display: inline-block;
+            background: #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Weather App</h1>
+        <input type="text" id="city" placeholder="Enter city">
+        <button onclick="getWeather()">Get Weather</button>
+       
+        
+        <div id="weather-info">
+            <h2 id="city-name"></h2>
+            <p class="icon" id="weather-icon"></p>
+            <p id="temperature"></p>
+            <p id="weather-desc"></p>
+            <p id="wind-speed"></p>
+            <p id="humidity"></p>
+          
+         
+            <button class="fav-btn" onclick="saveFavorite()">⭐ Save to Favorites</button>
+        </div>
+
+        <div class="favorite-cities">
+            <h3>Favorite Cities</h3>
+            <div id="favorites-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = "23ffd7d97820256a8963d9ae3581703f";
+
+        function getWeather(city = null) {
+            if (!city) city = document.getElementById("city").value;
+            if (!city) return alert("Please enter a city!");
+
+            fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("city-name").innerText = `${data.name}, ${data.sys.country}`;
+                document.getElementById("temperature").innerText = `Temperature: ${data.main.temp}°C`;
+                document.getElementById("weather-desc").innerText = `Weather: ${data.weather[0].description}`;
+                document.getElementById("wind-speed").innerText = `Wind Speed: ${data.wind.speed} m/s`;
+                document.getElementById("humidity").innerText = `Humidity: ${data.main.humidity}%`;
+                setWeatherIcon(data.weather[0].main);
+                setBackground(data.weather[0].main);
+                getLocalTime(data.coord.lat, data.coord.lon);
+            })
+            .catch(() => alert("City not found!"));
+        }
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const { latitude, longitude } = position.coords;
+                    fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`)
+                    .then(response => response.json())
+                    .then(data => getWeather(data.name));
+                });
+            } else {
+                alert("Geolocation is not supported by your browser.");
+            }
+        }
+
+        function getLocalTime(lat, lon) {
+            fetch(`https://api.timezonedb.com/v2.1/get-time-zone?key=YOUR_TIMEZONE_API_KEY&format=json&by=position&lat=${lat}&lng=${lon}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("local-time").innerText = `Local Time: ${data.formatted}`;
+            })
+            .catch(() => document.getElementById("local-time").innerText = "Local Time: Unavailable");
+        }
+
+        function setWeatherIcon(weather) {
+            const iconMap = {
+                "Clear": "☀️",
+                "Clouds": "☁️",
+                "Rain": "🌧️",
+                "Thunderstorm": "⛈️",
+                "Snow": "❄️",
+                "Mist": "🌫️"
+            };
+            document.getElementById("weather-icon").innerText = iconMap[weather] || "🌡️";
+        }
+
+        function setBackground(weather) {
+            const bgMap = {
+                "Clear": "#ffdf87",
+                "Clouds": "#b0c4de",
+                "Rain": "#647d8e",
+                "Thunderstorm": "#5c5c5c",
+                "Snow": "#e0f7fa",
+                "Mist": "#d3d3d3"
+            };
+            document.body.style.backgroundColor = bgMap[weather] || "#e6f7ff";
+        }
+
+        function saveFavorite() {
+            let city = document.getElementById("city-name").innerText;
+            if (!city) return;
+            let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+            if (!favorites.includes(city)) {
+                favorites.push(city);
+                localStorage.setItem("favorites", JSON.stringify(favorites));
+                displayFavorites();
+            }
+        }
+
+        function displayFavorites() {
+            let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+            let favContainer = document.getElementById("favorites-list");
+            favContainer.innerHTML = "";
+            favorites.forEach(city => {
+                let div = document.createElement("div");
+                div.innerText = city;
+                div.className = "fav-city";
+                div.onclick = () => getWeather(city);
+                favContainer.appendChild(div);
+            });
+        }
+
+        displayFavorites();
+    </script>
+
+</body>
+</html>
